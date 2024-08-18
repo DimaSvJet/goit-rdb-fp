@@ -1,0 +1,77 @@
+SELECT * FROM countries;
+
+ALTER TABLE infectious_cases
+ADD COLUMN id_country int;
+
+ALTER TABLE infectious_cases
+ADD FOREIGN KEY (id_country) REFERENCES countries (id);
+
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE infectious_cases AS i
+JOIN countries AS c ON i.Entity = c.country_name
+SET i.id_country = c.id;
+SET SQL_SAFE_UPDATES = 1;
+
+SELECT i.Entity, i.Code, i.id_country, c.id, c.country_name, c.country_code FROM infectious_cases AS i
+LEFT JOIN countries AS c ON i.id_country = c.id 
+LIMIT 100;
+
+ALTER TABLE infectious_cases
+DROP COLUMN Entity,
+DROP COLUMN Code;
+
+SELECT * FROM infectious_cases;
+
+SELECT id_country, 
+AVG(Number_rabies) AS avg_rab, 
+MIN(Number_rabies) AS min_rab, 
+MAX(Number_rabies) AS max_rab, 
+SUM(Number_rabies) AS sum_rab
+FROM infectious_cases
+WHERE Number_rabies IS NOT NULL AND Number_rabies != 0
+GROUP BY id_country
+ORDER BY avg_rab DESC
+LIMIT 10;
+
+SELECT Year, MAKEDATE(Year,1) AS first_day, CURDATE() AS cur_day, timestampdiff(YEAR, MAKEDATE(Year,1), CURDATE()) AS years_diff
+FROM infectious_cases;
+
+ALTER TABLE infectious_cases
+ADD COLUMN first_day date,
+ADD COLUMN cur_day date,
+ADD COLUMN years_diff int;
+
+SET SQL_SAFE_UPDATES = 0;
+UPDATE infectious_cases AS i
+SET
+	first_day = MAKEDATE(Year,1),
+    cur_day = CURDATE(), 
+    years_diff = timestampdiff(YEAR, MAKEDATE(Year,1), CURDATE());
+SET SQL_SAFE_UPDATES = 1;
+
+SELECT Year, first_day, cur_day, years_diff FROM infectious_cases;
+
+DROP FUNCTION IF EXISTS DiffYear;
+
+DELIMITER //
+CREATE FUNCTION DiffYear(Year INT)
+RETURNS INT
+DETERMINISTIC
+NO SQL
+BEGIN
+DECLARE result INT;
+SET result = timestampdiff(YEAR, MAKEDATE(Year,1), CURDATE());
+RETURN result;
+END //
+DELIMITER ;
+
+ALTER TABLE infectious_cases
+ADD COLUMN years_diff_func INT;
+
+SET SQL_SAFE_UPDATES = 0;
+UPDATE infectious_cases AS i
+SET years_diff_func = DiffYear(Year);
+SET SQL_SAFE_UPDATES = 1;
+
+SELECT years_diff, years_diff_func FROM infectious_cases;
